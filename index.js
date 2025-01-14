@@ -23,6 +23,19 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+    const scholarEase = client.db("scholarEase");
+    const scholarshipsCollection = scholarEase.collection("scholarships");
+    // scholarships get api
+    app.get("/scolarship", async (req, res) => {
+      const result = await scholarshipsCollection.find().toArray();
+      res.send(result);
+    });
+    //add scholarship post api
+    app.post("/scholarship", async (req, res) => {
+      const data = req.body;
+      const result = await scholarshipsCollection.insertOne(data);
+      res.send(result);
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
