@@ -1,7 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_PAYMENT_KEY);
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -26,9 +27,29 @@ async function run() {
     const scholarEase = client.db("scholarEase");
     const scholarshipsCollection = scholarEase.collection("scholarships");
     // scholarships get api
-    app.get("/scolarship", async (req, res) => {
+    app.get("/scholarship", async (req, res) => {
       const result = await scholarshipsCollection.find().toArray();
       res.send(result);
+    });
+    // single scholarship get api
+    app.get("/scholarship/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await scholarshipsCollection.findOne(query);
+      res.send(result);
+    });
+    // payment related post api
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
     //add scholarship post api
     app.post("/scholarship", async (req, res) => {
