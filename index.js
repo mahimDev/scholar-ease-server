@@ -26,9 +26,23 @@ async function run() {
     await client.connect();
     const scholarEase = client.db("scholarEase");
     const scholarshipsCollection = scholarEase.collection("scholarships");
+    const usersCollection = scholarEase.collection("users");
+    const applicationsCollection = scholarEase.collection("applications");
     // scholarships get api
     app.get("/scholarship", async (req, res) => {
       const result = await scholarshipsCollection.find().toArray();
+      res.send(result);
+    });
+    // all users get api
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+    // get single user api
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { user_email: email };
+      const result = await usersCollection.findOne(query);
       res.send(result);
     });
     // single scholarship get api
@@ -55,6 +69,18 @@ async function run() {
     app.post("/scholarship", async (req, res) => {
       const data = req.body;
       const result = await scholarshipsCollection.insertOne(data);
+      res.send(result);
+    });
+    // add user post api
+    app.post("/user", async (req, res) => {
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+    // add application post api
+    app.post("/application", async (req, res) => {
+      const application = req.body;
+      const result = await applicationsCollection.insertOne(application);
       res.send(result);
     });
     // Send a ping to confirm a successful connection
