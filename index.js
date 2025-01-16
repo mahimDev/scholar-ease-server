@@ -28,6 +28,17 @@ async function run() {
     const scholarshipsCollection = scholarEase.collection("scholarships");
     const usersCollection = scholarEase.collection("users");
     const applicationsCollection = scholarEase.collection("applications");
+    // search admin role get api
+    app.get("/user/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { user_email: email };
+      const user = await usersCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user.user_role === "Admin";
+      }
+      res.send({ admin });
+    });
     // scholarships get api
     app.get("/scholarship", async (req, res) => {
       const result = await scholarshipsCollection.find().toArray();
