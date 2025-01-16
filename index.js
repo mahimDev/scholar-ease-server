@@ -83,6 +83,25 @@ async function run() {
       const result = await applicationsCollection.insertOne(application);
       res.send(result);
     });
+    // update user role patch api
+    app.patch("/user", async (req, res) => {
+      const { role, id } = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateUser = {
+        $set: {
+          user_role: role,
+        },
+      };
+      const result = await usersCollection.updateOne(query, updateUser);
+      res.send(result);
+    });
+    // user delete api
+    app.delete("/user/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
