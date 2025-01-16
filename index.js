@@ -26,8 +26,9 @@ async function run() {
     await client.connect();
     const scholarEase = client.db("scholarEase");
     const scholarshipsCollection = scholarEase.collection("scholarships");
-    const usersCollection = scholarEase.collection("users");
     const applicationsCollection = scholarEase.collection("applications");
+    const reviewsCollection = scholarEase.collection("reviews");
+    const usersCollection = scholarEase.collection("users");
     // search admin role get api
     app.get("/user/admin/:email", async (req, res) => {
       const email = req.params.email;
@@ -71,10 +72,53 @@ async function run() {
     // user application get api
     app.get("/application/:email", async (req, res) => {
       const email = req.params.email;
-      const query = {
-        userEmail: email,
-      };
-      const result = await applicationsCollection.find(query).toArray();
+
+      const result = await applicationsCollection
+        .aggregate([
+          {
+            $match: { userEmail: email },
+          },
+          {
+            $addFields: {
+              scholarshipId: { $toObjectId: "$scholarshipId" },
+            },
+          },
+          {
+            $lookup: {
+              from: "scholarships",
+              localField: "scholarshipId",
+              foreignField: "_id",
+              as: "scholarshipDetails",
+            },
+          },
+          {
+            $unwind: "$scholarshipDetails",
+          },
+          {
+            $project: {
+              _id: 1,
+              address: 1,
+              userEmail: 1,
+              userName: 1,
+              phone: 1,
+              photo: 1,
+              gender: 1,
+              degree: 1,
+              sscResult: 1,
+              hscResult: 1,
+              studyGap: 1,
+              scholarshipName: "$scholarshipDetails.scholarshipName",
+              scholarshipId: "$scholarshipDetails._id",
+              universityName: "$scholarshipDetails.universityName",
+              universityCountry: "$scholarshipDetails.universityCountry",
+              universityCity: "$scholarshipDetails.universityCity",
+              applicationFees: "$scholarshipDetails.applicationFees",
+              serviceCharge: "$scholarshipDetails.serviceCharge",
+              applicationDeadline: "$scholarshipDetails.applicationDeadline",
+            },
+          },
+        ])
+        .toArray();
       res.send(result);
     });
     // payment related post api
@@ -108,6 +152,38 @@ async function run() {
       const result = await applicationsCollection.insertOne(application);
       res.send(result);
     });
+    // review add post api
+    app.post("/review", async (req, res) => {
+      const review = req.body;
+      const query = { scholarshipId: review.scholarshipId };
+      const user = await reviewsCollection.findOne(query);
+      if (user) {
+        return res.send({ massage: "You already gave a review" });
+      }
+      const result = await reviewsCollection.insertOne(review);
+      res.send(result);
+    });
+    // update applications
+    app.put("/application/:id", async (req, res) => {
+      const id = req.params.id;
+      const application = req.body;
+      const query = { _id: new ObjectId(id) };
+      console.log(application);
+      const updatedDoc = {
+        $set: {
+          phone: application.phone,
+          photo: application.photo,
+          address: application.address,
+          gender: application.gender,
+          sscResult: application.sscResult,
+          hscResult: application.hscResult,
+          degree: application.degree,
+          studyGap: application.studyGap,
+        },
+      };
+      const result = await applicationsCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
     // update user role patch api
     app.patch("/user", async (req, res) => {
       const { role, id } = req.body;
@@ -125,6 +201,13 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
+    // applications cancel delete api
+    app.delete("/application/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await applicationsCollection.deleteOne(query);
       res.send(result);
     });
     // Send a ping to confirm a successful connection
