@@ -63,6 +63,20 @@ async function run() {
       const result = await scholarshipsCollection.findOne(query);
       res.send(result);
     });
+    // application get api
+    app.get("/application", async (req, res) => {
+      const result = await applicationsCollection.find().toArray();
+      res.send(result);
+    });
+    // user application get api
+    app.get("/application/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        userEmail: email,
+      };
+      const result = await applicationsCollection.find(query).toArray();
+      res.send(result);
+    });
     // payment related post api
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
