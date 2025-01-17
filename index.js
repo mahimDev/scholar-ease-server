@@ -29,16 +29,19 @@ async function run() {
     const applicationsCollection = scholarEase.collection("applications");
     const reviewsCollection = scholarEase.collection("reviews");
     const usersCollection = scholarEase.collection("users");
-    // search admin role get api
-    app.get("/user/admin/:email", async (req, res) => {
+    // search  role get api
+    app.get("/user/role/:email", async (req, res) => {
       const email = req.params.email;
       const query = { user_email: email };
       const user = await usersCollection.findOne(query);
-      let admin = false;
-      if (user) {
-        admin = user.user_role === "Admin";
+      let role = false;
+      if (user.user_role === "Modaretor") {
+        role = "Modaretor";
       }
-      res.send({ admin });
+      if (user.user_role === "Admin") {
+        role = "Admin";
+      }
+      res.send({ role });
     });
     // scholarships get api
     app.get("/scholarship", async (req, res) => {
@@ -128,6 +131,7 @@ async function run() {
       const result = await reviewsCollection.find(query).toArray();
       res.send(result);
     });
+
     // payment related post api
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
@@ -191,6 +195,32 @@ async function run() {
       const result = await applicationsCollection.updateOne(query, updatedDoc);
       res.send(result);
     });
+    // update scholarships
+    app.put("/scholarship/:id", async (req, res) => {
+      const id = req.params.id;
+      const scholarship = req.body;
+      const query = { _id: new ObjectId(id) };
+      console.log(scholarship);
+      const updatedDoc = {
+        $set: {
+          scholarshipName: scholarship.scholarshipName,
+          universityName: scholarship.universityName,
+          universityImage: scholarship.photo,
+          universityCountry: scholarship.universityCountry,
+          universityCity: scholarship.universityCity,
+          subjectCategory: scholarship.subjectCategory,
+          scholarshipCategory: scholarship.scholarshipCategory,
+          degree: scholarship.degree,
+          tuitionFees: scholarship.tuitionFees,
+          applicationFees: scholarship.applicationFees,
+          serviceCharge: scholarship.serviceCharge,
+          applicationDeadline: scholarship.applicationDeadline,
+          postedUserEmail: scholarship.postedUserEmail,
+        },
+      };
+      const result = await scholarshipsCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
     // update user role patch api
     app.patch("/user", async (req, res) => {
       const { role, id } = req.body;
@@ -201,6 +231,19 @@ async function run() {
         },
       };
       const result = await usersCollection.updateOne(query, updateUser);
+      res.send(result);
+    });
+    // update review patch api
+    app.patch("/review", async (req, res) => {
+      const { rating, comment, id } = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateUser = {
+        $set: {
+          rating: rating,
+          comment: comment,
+        },
+      };
+      const result = await reviewsCollection.updateOne(query, updateUser);
       res.send(result);
     });
     // user delete api
@@ -215,6 +258,13 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await applicationsCollection.deleteOne(query);
+      res.send(result);
+    });
+    // cancel review delete api
+    app.delete("/review/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewsCollection.deleteOne(query);
       res.send(result);
     });
     // Send a ping to confirm a successful connection
