@@ -72,6 +72,11 @@ async function run() {
       const result = await applicationsCollection.find().toArray();
       res.send(result);
     });
+    // reviews get api
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewsCollection.find().toArray();
+      res.send(result);
+    });
     // user application get api
     app.get("/application/:email", async (req, res) => {
       const email = req.params.email;
@@ -131,7 +136,6 @@ async function run() {
       const result = await reviewsCollection.find(query).toArray();
       res.send(result);
     });
-
     // payment related post api
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
