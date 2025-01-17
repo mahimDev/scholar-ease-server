@@ -260,6 +260,13 @@ async function run() {
       const result = await applicationsCollection.deleteOne(query);
       res.send(result);
     });
+    // scholarship  delete api
+    app.delete("/scholarship/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await scholarshipsCollection.deleteOne(query);
+      res.send(result);
+    });
     // cancel review delete api
     app.delete("/review/:id", async (req, res) => {
       const id = req.params.id;
