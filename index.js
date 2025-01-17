@@ -121,6 +121,13 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    // user can see his/her  review for this get api
+    app.get("/review/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { userEmail: email };
+      const result = await reviewsCollection.find(query).toArray();
+      res.send(result);
+    });
     // payment related post api
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
