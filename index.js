@@ -32,14 +32,20 @@ async function run() {
     // search  role get api
     app.get("/user/role/:email", async (req, res) => {
       const email = req.params.email;
+      if (!email) {
+        return res.status(400).send({ error: "Email is required" });
+      }
       const query = { user_email: email };
       const user = await usersCollection.findOne(query);
-      let role = false;
-      if (user.user_role === "Modaretor") {
+      let role;
+      if (user?.user_role === "Admin") {
+        role = "Admin";
+      }
+      if (user?.user_role === "Modaretor") {
         role = "Modaretor";
       }
-      if (user.user_role === "Admin") {
-        role = "Admin";
+      if (user?.user_role === "user") {
+        role = "RegularUser";
       }
       res.send({ role });
     });
@@ -115,6 +121,7 @@ async function run() {
               sscResult: 1,
               hscResult: 1,
               studyGap: 1,
+              feedback: 1,
               scholarshipName: "$scholarshipDetails.scholarshipName",
               scholarshipId: "$scholarshipDetails._id",
               universityName: "$scholarshipDetails.universityName",
@@ -248,6 +255,31 @@ async function run() {
         },
       };
       const result = await reviewsCollection.updateOne(query, updateUser);
+      res.send(result);
+    });
+    // update feedback patch api
+    app.patch("/application", async (req, res) => {
+      const { feedback, id } = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateUser = {
+        $set: {
+          feedback: feedback,
+        },
+      };
+      const result = await applicationsCollection.updateOne(query, updateUser);
+      res.send(result);
+    });
+    // Applications rejected patch api
+    app.patch("/application/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      console.log(query);
+      const updateUser = {
+        $set: {
+          status: "Rejected",
+        },
+      };
+      const result = await applicationsCollection.updateOne(query, updateUser);
       res.send(result);
     });
     // user delete api
