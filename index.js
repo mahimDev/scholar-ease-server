@@ -49,6 +49,7 @@ async function run() {
       }
       res.send({ role });
     });
+
     // scholarships get api
     app.get("/scholarship", async (req, res) => {
       const result = await scholarshipsCollection.find().toArray();
@@ -69,8 +70,14 @@ async function run() {
     // single scholarship get api
     app.get("/scholarship/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await scholarshipsCollection.findOne(query);
+      const query = { scholarshipId: id };
+      const reviwes = await reviewsCollection.find(query).toArray();
+      const filter = { _id: new ObjectId(id) };
+      const scholarship = await scholarshipsCollection.findOne(filter);
+      const result = {
+        scholarship,
+        reviwes,
+      };
       res.send(result);
     });
     // application get api
@@ -122,6 +129,7 @@ async function run() {
               hscResult: 1,
               studyGap: 1,
               feedback: 1,
+              status: 1,
               scholarshipName: "$scholarshipDetails.scholarshipName",
               scholarshipId: "$scholarshipDetails._id",
               universityName: "$scholarshipDetails.universityName",
@@ -177,7 +185,7 @@ async function run() {
     // review add post api
     app.post("/review", async (req, res) => {
       const review = req.body;
-      const query = { scholarshipId: review.scholarshipId };
+      const query = { applicationId: review.applicationId };
       const user = await reviewsCollection.findOne(query);
       if (user) {
         return res.send({ massage: "You already gave a review" });
@@ -190,7 +198,6 @@ async function run() {
       const id = req.params.id;
       const application = req.body;
       const query = { _id: new ObjectId(id) };
-      console.log(application);
       const updatedDoc = {
         $set: {
           phone: application.phone,
@@ -211,7 +218,6 @@ async function run() {
       const id = req.params.id;
       const scholarship = req.body;
       const query = { _id: new ObjectId(id) };
-      console.log(scholarship);
       const updatedDoc = {
         $set: {
           scholarshipName: scholarship.scholarshipName,
@@ -272,11 +278,12 @@ async function run() {
     // Applications rejected patch api
     app.patch("/application/:id", async (req, res) => {
       const id = req.params.id;
+      const { status } = req.body;
       const query = { _id: new ObjectId(id) };
-      console.log(query);
+
       const updateUser = {
         $set: {
-          status: "Rejected",
+          status: status,
         },
       };
       const result = await applicationsCollection.updateOne(query, updateUser);
