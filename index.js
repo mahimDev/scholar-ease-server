@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const stripe = require("stripe")(process.env.STRIPE_PAYMENT_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
@@ -8,7 +9,32 @@ const port = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+// middlware
+const verifyToken = (req, res, next) => {
+  if (!req.headers.authorizetion) {
+    return res.status(401).send({ massage: "unauthorized access" });
+  }
+  const token = req.headers.authorizetion.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_SECRET_TOKEN, (error, decoded) => {
+    if (error) {
+      return res.status(401).send({ massage: "unauthorized access" });
+    }
+    req.decoded = decoded;
 
+    next();
+  });
+};
+// use verify admin
+const verifyAdmin = async (req, res, next) => {
+  const email = req.decoded.email;
+  const query = { user_email: email };
+  const user = await userCollection.findOne(query);
+  const isAdmin = user?.user_role === "admin";
+  if (!isAdmin) {
+    return res.status(403).send({ message: "forbidden access" });
+  }
+  next();
+};
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@practice.hcuo4.mongodb.net/?retryWrites=true&w=majority&appName=practice`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -23,17 +49,30 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const scholarEase = client.db("scholarEase");
     const scholarshipsCollection = scholarEase.collection("scholarships");
     const applicationsCollection = scholarEase.collection("applications");
     const reviewsCollection = scholarEase.collection("reviews");
     const usersCollection = scholarEase.collection("users");
+
+    // auth related api
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_SECRET_TOKEN, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
     // search  role get api
-    app.get("/user/role/:email", async (req, res) => {
+    app.get("/user/role/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+
       if (!email) {
         return res.status(400).send({ error: "Email is required" });
+      }
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ massage: "forbidden access" });
       }
       const query = { user_email: email };
       const user = await usersCollection.findOne(query);
@@ -78,7 +117,7 @@ async function run() {
     // scholarships get api
     app.get("/scholarship", async (req, res) => {
       const { search } = req.query;
-      console.log(search);
+
       let query = {};
       if (search) {
         query = {
@@ -104,12 +143,11 @@ async function run() {
           ],
         };
       }
-
       const result = await scholarshipsCollection.find(query).toArray();
       res.send(result);
     });
     // all users get api
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -134,7 +172,7 @@ async function run() {
       res.send(result);
     });
     // application get api
-    app.get("/application", async (req, res) => {
+    app.get("/application", verifyToken, async (req, res) => {
       const { sort } = req.query;
       let sortOption = { _id: 1 };
       if (sort === "appliedDate") {
@@ -143,7 +181,7 @@ async function run() {
       if (sort === "scholarshipDeadline") {
         sortOption = { postdDate: 1 };
       }
-      console.log(sort);
+
       const result = await applicationsCollection
         .aggregate([
           {
@@ -192,7 +230,7 @@ async function run() {
       res.send(result);
     });
     // user application get api
-    app.get("/application/:email", async (req, res) => {
+    app.get("/application/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
 
       const result = await applicationsCollection
@@ -295,7 +333,7 @@ async function run() {
       res.send(result);
     });
     // update applications
-    app.put("/application/:id", async (req, res) => {
+    app.put("/application/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const application = req.body;
       const query = { _id: new ObjectId(id) };
@@ -315,7 +353,7 @@ async function run() {
       res.send(result);
     });
     // update scholarships
-    app.put("/scholarship/:id", async (req, res) => {
+    app.put("/scholarship/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const scholarship = req.body;
       const query = { _id: new ObjectId(id) };
@@ -340,7 +378,7 @@ async function run() {
       res.send(result);
     });
     // update user role patch api
-    app.patch("/user", async (req, res) => {
+    app.patch("/user", verifyToken, async (req, res) => {
       const { role, id } = req.body;
       const query = { _id: new ObjectId(id) };
       const updateUser = {
@@ -352,7 +390,7 @@ async function run() {
       res.send(result);
     });
     // update review patch api
-    app.patch("/review", async (req, res) => {
+    app.patch("/review", verifyToken, async (req, res) => {
       const { rating, comment, id } = req.body;
       const query = { _id: new ObjectId(id) };
       const updateUser = {
@@ -365,7 +403,7 @@ async function run() {
       res.send(result);
     });
     // update feedback patch api
-    app.patch("/application", async (req, res) => {
+    app.patch("/application", verifyToken, async (req, res) => {
       const { feedback, id } = req.body;
       const query = { _id: new ObjectId(id) };
       const updateUser = {
@@ -377,7 +415,7 @@ async function run() {
       res.send(result);
     });
     // Applications rejected patch api
-    app.patch("/application/:id", async (req, res) => {
+    app.patch("/application/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const { status } = req.body;
       const query = { _id: new ObjectId(id) };
@@ -391,38 +429,38 @@ async function run() {
       res.send(result);
     });
     // user delete api
-    app.delete("/user/:id", async (req, res) => {
+    app.delete("/user/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
       res.send(result);
     });
     // applications cancel delete api
-    app.delete("/application/:id", async (req, res) => {
+    app.delete("/application/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await applicationsCollection.deleteOne(query);
       res.send(result);
     });
     // scholarship  delete api
-    app.delete("/scholarship/:id", async (req, res) => {
+    app.delete("/scholarship/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await scholarshipsCollection.deleteOne(query);
       res.send(result);
     });
     // cancel review delete api
-    app.delete("/review/:id", async (req, res) => {
+    app.delete("/review/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await reviewsCollection.deleteOne(query);
       res.send(result);
     });
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -431,5 +469,5 @@ async function run() {
 run().catch(console.dir);
 
 app.listen(port, () => {
-  console.log("scholar is available", port);
+  // console.log("scholar is available", port);
 });
