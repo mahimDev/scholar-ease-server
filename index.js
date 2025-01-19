@@ -79,29 +79,33 @@ async function run() {
     app.get("/scholarship", async (req, res) => {
       const { search } = req.query;
       console.log(search);
-      const query = {
-        $or: [
-          {
-            universityName: {
-              $regex: search,
-              $options: "i",
+      let query = {};
+      if (search) {
+        query = {
+          $or: [
+            {
+              universityName: {
+                $regex: search,
+                $options: "i",
+              },
             },
-          },
-          {
-            degree: {
-              $regex: search,
-              $options: "i",
+            {
+              degree: {
+                $regex: search,
+                $options: "i",
+              },
             },
-          },
-          {
-            scholarshipName: {
-              $regex: search,
-              $options: "i",
+            {
+              scholarshipName: {
+                $regex: search,
+                $options: "i",
+              },
             },
-          },
-        ],
-      };
-      const result = await scholarshipsCollection.find(query || "").toArray();
+          ],
+        };
+      }
+
+      const result = await scholarshipsCollection.find(query).toArray();
       res.send(result);
     });
     // all users get api
@@ -131,7 +135,55 @@ async function run() {
     });
     // application get api
     app.get("/application", async (req, res) => {
-      const result = await applicationsCollection.find().toArray();
+      const { sort } = req.query;
+      let sortOption = { _id: 1 };
+      if (sort === "appliedDate") {
+        sortOption = { applicationDeadline: 1 };
+      }
+      if (sort === "scholarshipDeadline") {
+        sortOption = { postdDate: 1 };
+      }
+      console.log(sort);
+      const result = await applicationsCollection
+        .aggregate([
+          {
+            $addFields: {
+              scholarshipId: { $toObjectId: "$scholarshipId" },
+            },
+          },
+          {
+            $lookup: {
+              from: "scholarships",
+              localField: "scholarshipId",
+              foreignField: "_id",
+              as: "scholarshipDetails",
+            },
+          },
+          {
+            $unwind: "$scholarshipDetails",
+          },
+          {
+            $project: {
+              _id: 1,
+              userEmail: 1,
+              userName: 1,
+              phone: 1,
+              photo: 1,
+              degree: 1,
+              sscResult: 1,
+              hscResult: 1,
+              studyGap: 1,
+              status: 1,
+              universityName: "$scholarshipDetails.universityName",
+              applicationDeadline: "$scholarshipDetails.applicationDeadline",
+              postdDate: "$scholarshipDetails.postdDate",
+            },
+          },
+          {
+            $sort: sortOption,
+          },
+        ])
+        .toArray();
       res.send(result);
     });
     // reviews get api
