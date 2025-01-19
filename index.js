@@ -49,10 +49,59 @@ async function run() {
       }
       res.send({ role });
     });
-
+    app.get("/featuredScholarship", async (req, res) => {
+      const result = await scholarshipsCollection
+        .aggregate([
+          {
+            $addFields: {
+              applicationFeesNumeric: {
+                $toInt: "$applicationFees", // Convert applicationFees to a number
+              },
+              postedDate: {
+                $toDate: "$_id",
+              },
+            },
+          },
+          {
+            $sort: {
+              applicationFeesNumeric: 1,
+              postedDate: -1,
+            },
+          },
+          {
+            $limit: 6,
+          },
+        ])
+        .toArray();
+      res.send(result);
+    });
     // scholarships get api
     app.get("/scholarship", async (req, res) => {
-      const result = await scholarshipsCollection.find().toArray();
+      const { search } = req.query;
+      console.log(search);
+      const query = {
+        $or: [
+          {
+            universityName: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            degree: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            scholarshipName: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+        ],
+      };
+      const result = await scholarshipsCollection.find(query || "").toArray();
       res.send(result);
     });
     // all users get api
