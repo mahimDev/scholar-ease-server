@@ -64,6 +64,18 @@ async function run() {
       });
       res.send({ token });
     });
+    app.get("/admin-stats", async (req, res) => {
+      const user = await usersCollection.estimatedDocumentCount();
+      const application = await applicationsCollection.estimatedDocumentCount();
+      const scholarship = await scholarshipsCollection.estimatedDocumentCount();
+      const review = await reviewsCollection.estimatedDocumentCount();
+      res.send({
+        user,
+        review,
+        application,
+        scholarship,
+      });
+    });
     // search  role get api
     app.get("/user/role/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -115,9 +127,15 @@ async function run() {
       res.send(result);
     });
     // scholarships get api
+    app.get("/scholarships", async (req, res) => {
+      const result = await scholarshipsCollection.find().toArray();
+      res.send(result);
+    });
+    // scholarship by search
     app.get("/scholarship", async (req, res) => {
-      const { search } = req.query;
-
+      const { search, page = 1, limit = 6 } = req.query;
+      const totalitems = await scholarshipsCollection.countDocuments();
+      console.log(page, limit);
       let query = {};
       if (search) {
         query = {
@@ -143,9 +161,19 @@ async function run() {
           ],
         };
       }
-      const result = await scholarshipsCollection.find(query).toArray();
-      res.send(result);
+      const pageNumber = parseInt(page);
+      const limitNumber = parseInt(limit);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      console.log(pageNumber, limitNumber);
+      const result = await scholarshipsCollection
+        .find(query)
+        .skip(skip)
+        .limit(limitNumber)
+        .toArray();
+      res.send({ result, totalitems });
     });
+
     // all users get api
     app.get("/users", verifyToken, async (req, res) => {
       const result = await usersCollection.find().toArray();
