@@ -135,7 +135,7 @@ async function run() {
     app.get("/scholarship", async (req, res) => {
       const { search, page = 1, limit = 6 } = req.query;
       const totalitems = await scholarshipsCollection.countDocuments();
-      console.log(page, limit);
+
       let query = {};
       if (search) {
         query = {
