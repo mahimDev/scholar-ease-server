@@ -133,9 +133,11 @@ async function run() {
     });
     // scholarship by search
     app.get("/scholarship", async (req, res) => {
-      const { search, page = 1, limit = 6 } = req.query;
+      const { sorting, search, page = 1, limit = 6 } = req.query;
       const totalitems = await scholarshipsCollection.countDocuments();
-
+      let sortValue = {};
+      if (sorting === "asc") sortValue = { applicationFees: 1 };
+      if (sorting === "des") sortValue = { applicationFees: -1 };
       let query = {};
       if (search) {
         query = {
@@ -164,16 +166,67 @@ async function run() {
       const pageNumber = parseInt(page);
       const limitNumber = parseInt(limit);
       const skip = (pageNumber - 1) * limitNumber;
+      console.log(sorting);
 
-      console.log(pageNumber, limitNumber);
       const result = await scholarshipsCollection
         .find(query)
+        .sort(sortValue)
         .skip(skip)
         .limit(limitNumber)
         .toArray();
       res.send({ result, totalitems });
     });
+    //
+    // app.get("/scholarship", async (req, res) => {
+    //   try {
+    //     const {
+    //       sorting,
+    //       search,
+    //       page = 1,
+    //       limit = 6,
+    //       sortBy = "applicationFees",
+    //     } = req.query;
 
+    //     // Convert page and limit to numbers
+    //     const pageNumber = parseInt(page);
+    //     const limitNumber = parseInt(limit);
+    //     const skip = (pageNumber - 1) * limitNumber;
+
+    //     // Sorting logic
+    //     let sortValue = {};
+    //     if (sorting === "asc") sortValue[sortBy] = 1;
+    //     if (sorting === "des") sortValue[sortBy] = -1;
+
+    //     // Search logic
+    //     let query = {};
+    //     if (search) {
+    //       query = {
+    //         $or: [
+    //           { universityName: { $regex: search, $options: "i" } },
+    //           { degree: { $regex: search, $options: "i" } },
+    //           { scholarshipName: { $regex: search, $options: "i" } },
+    //         ],
+    //       };
+    //     }
+
+    //     // Get total items count
+    //     const totalitems = await scholarshipsCollection.countDocuments(query);
+
+    //     // Fetch results
+    //     const result = await scholarshipsCollection
+    //       .find(query)
+    //       .sort(sortValue)
+    //       .skip(skip)
+    //       .limit(limitNumber)
+    //       .toArray();
+
+    //     res.send({ result, totalitems });
+    //   } catch (error) {
+    //     console.error("Error fetching scholarships:", error);
+    //     res.status(500).send({ message: "Server error" });
+    //   }
+    // });
+    //
     // all users get api
     app.get("/users", verifyToken, async (req, res) => {
       const result = await usersCollection.find().toArray();
